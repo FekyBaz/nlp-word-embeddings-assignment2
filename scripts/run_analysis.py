@@ -223,9 +223,14 @@ def curated_similarity_pairs() -> list[tuple[str, str]]:
 def semantic_similarity(vectors: dict[str, np.ndarray]) -> dict:
     rows = []
     for left, right in curated_similarity_pairs():
-        if left in vectors and right in vectors:
-            sim = float(np.dot(vectors[left], vectors[right]) / (np.linalg.norm(vectors[left]) * np.linalg.norm(vectors[right]) + 1e-12))
-            rows.append({"word_1": left, "word_2": right, "cosine_similarity": sim})
+        # Vocab uses stemming, so normalize the curated terms with the same pipeline.
+        left_tokens, right_tokens = preprocess(left), preprocess(right)
+        if len(left_tokens) != 1 or len(right_tokens) != 1:
+            continue
+        normalized_left, normalized_right = left_tokens[0], right_tokens[0]
+        if normalized_left in vectors and normalized_right in vectors:
+            sim = float(np.dot(vectors[normalized_left], vectors[normalized_right]) / (np.linalg.norm(vectors[normalized_left]) * np.linalg.norm(vectors[normalized_right]) + 1e-12))
+            rows.append({"word_1": left, "word_2": right, "normalized_word_1": normalized_left, "normalized_word_2": normalized_right, "cosine_similarity": sim})
     return {"evaluated_pairs": len(rows), "candidate_pairs": len(curated_similarity_pairs()), "coverage": len(rows) / len(curated_similarity_pairs()), "pairs": rows}
 
 
