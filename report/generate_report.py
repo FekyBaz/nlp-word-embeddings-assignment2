@@ -95,6 +95,17 @@ def build() -> None:
         for pair in sem["pairs"][:8]:
             story.append(Paragraph(
                 f"{pair['word_1']} / {pair['word_2']}: {pair['cosine_similarity']:.3f}", styles["Small"]))
+        coherence = item["topic_coherence"]
+        story.append(Paragraph(
+            f"Training-only class-conditioned cohesion proxy (not standard NPMI): "
+            f"{coherence['overall_mean_pairwise_cosine'] if coherence['overall_mean_pairwise_cosine'] is not None else 'not available'}.",
+            styles["Small"]))
+        for class_name, details in coherence["by_class"].items():
+            score = details["mean_pairwise_cosine"]
+            score_text = f"{score:.3f}" if score is not None else "not available"
+            story.append(Paragraph(
+                f"{class_name}: mean pairwise cosine={score_text}; selected terms: {', '.join(details['terms'][:8])}",
+                styles["Small"]))
         story.append(Spacer(1, 0.15*cm))
     story.extend([
         Spacer(1, 0.2*cm),
