@@ -1,63 +1,61 @@
 # NLP Assignment 2 — Word Embeddings Comparison
 
-Compare Word2Vec Skip-gram and GloVe embeddings on the Document Classification Dataset, including preprocessing, PCA/t-SNE visualization, semantic-similarity analysis, topic coherence, and downstream classification evaluation.
+Compare **Word2Vec Skip-gram** and **GloVe** embeddings on the assigned five-domain document-classification dataset. The project includes text preprocessing, PCA/t-SNE visualization, semantic word-pair inspection, a training-only topic-cohesion proxy, and held-out downstream classification evaluation.
 
-## Assignment deliverables
+## Assignment specification
 
-- A Jupyter notebook with code, outputs, visualizations, and explanations that runs top to bottom without errors.
-- A PDF report summarizing methodology and key results.
-
-Official assignment sheet: [NLP_anu_assignment2.pdf](NLP_anu_assignment2.pdf)
+See [NLP_anu_assignment2.pdf](NLP_anu_assignment2.pdf). Required deliverables are an executable Jupyter notebook with outputs/visualizations and a PDF report explaining methodology and findings.
 
 ## Dataset
 
-Required source: [Text Document Classification Dataset on Kaggle](https://www.kaggle.com/datasets/sunilthite/text-document-classification-dataset)
+The dataset CSV is committed at [`df_file.csv`](df_file.csv). The assignment source is [Kaggle: Text Document Classification Dataset](https://www.kaggle.com/datasets/sunilthite/text-document-classification-dataset).
 
-The assignment specifies five domains: politics, sport, tech, entertainment, and business. Validate the actual downloaded files and schema before analysis; do not assume a row count or column names.
+The pipeline detects common text/label column names at runtime and reports the actual columns and class counts. It fails loudly if the schema cannot be inferred. Verify the dataset's applicable terms before redistributing it outside this private coursework repository.
 
-### Dataset archive currently uploaded
-
-The uploaded `archive.zip` is in the repository root. Extract it locally into `data/raw/` after reviewing its contents and the dataset's applicable terms. Do not commit extracted third-party files until file sizes, schema, and license/terms have been checked.
-
-On Windows PowerShell, from the repository root:
-
-```powershell
-New-Item -ItemType Directory -Force data/raw | Out-Null
-Expand-Archive -LiteralPath .\archive.zip -DestinationPath .\data\raw -Force
-py scripts/inspect_dataset.py data/raw
-```
-
-If downloading again from Kaggle, install and authenticate the Kaggle CLI using https://www.kaggle.com/settings/api, then run:
-
-```powershell
-py -m pip install kaggle
-kaggle datasets download -d sunilthite/text-document-classification-dataset -p data/raw --unzip
-py scripts/inspect_dataset.py data/raw
-```
-
-**Never commit Kaggle credentials, API tokens, or passwords.** The repository ignores raw data and credentials by default. Do not remove those safeguards without verifying dataset size and permission to redistribute.
-
-## Development setup
-
-Recommended: Python 3.11 or newer in a virtual environment.
+## Quick start (Windows PowerShell)
 
 ```powershell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
+pip install -r requirements.txt
+python scripts/inspect_dataset.py .
+python scripts/run_analysis.py --data df_file.csv --output report/generated
+python report/generate_report.py
+python scripts/validate_outputs.py
 ```
 
-Dependencies, notebook, validation scripts, and report will be finalized after the actual dataset schema and the GloVe training/loading approach have been verified.
+To run the notebook top to bottom:
 
-## Reproducibility and evaluation principles
+```powershell
+jupyter nbconvert --to notebook --execute assignment_2.ipynb --output assignment_2_executed.ipynb --ExecutePreprocessor.timeout=1800
+python report/generate_report.py
+python scripts/validate_outputs.py
+```
 
-- Use a fixed random seed and record library versions and model configurations.
-- Fit data-dependent preprocessing, vocabulary, and the downstream classifier only on the training split when evaluating generalization.
-- Use the same split and a comparable evaluation protocol for both embeddings; report per-class metrics and a confusion matrix, not only accuracy.
-- Document whether GloVe vectors are trained locally or loaded from a pretrained source.
-- Treat PCA and t-SNE as exploratory visualizations, not proof of semantic quality.
-- Report out-of-vocabulary coverage and explain limitations of the semantic-similarity and topic-coherence evaluation.
+Open `assignment_2.ipynb` in Jupyter for the documented workflow. The CI workflow executes it in a clean environment and uploads the executed notebook, PDF report, metrics, and figures as a temporary 7-day artifact.
 
-## Current status
+## Method and safeguards
 
-Repository scaffolding and dataset-inspection utility are committed. Dataset contents have not yet been independently inspected in this environment; do not report model results until the data has been validated and the notebook executed.
+- Fixed random seed: 42; stratified 80/20 train/test split.
+- Preprocessing: lowercase, alphabetic tokenization, English stop-word removal, Porter stemming.
+- Word2Vec: Gensim Skip-gram, 50 dimensions, context window 5, minimum count 2.
+- GloVe: locally trained compact educational weighted least-squares implementation over co-occurrence counts, 50 dimensions and context window 5. This is **not** a pretrained published GloVe release.
+- Both embedding vocabularies are fitted on training documents only. The downstream representation is the mean of available word vectors; evaluation uses class-balanced Logistic Regression on the same held-out split.
+- Metrics include test accuracy, macro/weighted F1, per-class results, confusion matrices, vocabulary size, and the rate of test documents with no represented tokens.
+- Semantic similarity uses a small curated set of illustrative word pairs and reports vocabulary coverage; it is not a gold-standard benchmark.
+- Topic coherence is reported as mean pairwise cosine similarity among frequent class-associated training terms. This is an exploratory, label-informed proxy, **not** a standard NPMI topic-coherence metric.
+- PCA and t-SNE plots are exploratory views; apparent clusters alone do not prove semantic quality.
+
+## Repository contents
+
+- `assignment_2.ipynb` — annotated notebook.
+- `scripts/run_analysis.py` — reproducible model training and evaluation.
+- `scripts/inspect_dataset.py` — dataset schema/quality inspection helper.
+- `scripts/validate_outputs.py` — structural checks for generated metrics, figures, notebook, and PDF.
+- `report/generate_report.py` — PDF report generator based on computed metrics.
+- `.github/workflows/assignment2.yml` — clean-kernel notebook execution and artifact upload.
+
+## Status and reproducibility
+
+The code and CI workflow are in place. Metrics and PDF must be generated from the actual CSV and the workflow must pass before results are considered verified. No model-performance numbers are hard-coded in the report generator.
