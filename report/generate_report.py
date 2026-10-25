@@ -77,6 +77,12 @@ def build() -> None:
         results_table, Spacer(1, 0.2 * cm),
         Paragraph("Test performance is the primary comparison. Training accuracy is included only as a diagnostic. "
                   "The zero-vector rate indicates test documents for which no token had an embedding.", styles["Small"]),
+        Paragraph(
+            f"Result summary: {max(results, key=lambda item: item['test_accuracy'])['model']} achieved the higher held-out "
+            f"test accuracy ({max(results, key=lambda item: item['test_accuracy'])['test_accuracy']:.1%}) and macro-F1 "
+            f"({max(results, key=lambda item: item['macro_f1'])['macro_f1']:.3f}) in this split. "
+            "This is evidence for this dataset and configuration only, not a universal ranking.", styles["BodyText"]),
+        Spacer(1, 0.2 * cm),
         PageBreak(),
         Paragraph("Confusion matrices", styles["Heading1"]),
     ])
@@ -85,6 +91,36 @@ def build() -> None:
         path = FIGURES / f"{safe_name}_confusion.png"
         if path.exists():
             story.extend([Paragraph(item["model"], styles["Heading2"]), Image(str(path), width=14*cm, height=10*cm), Spacer(1, 0.25*cm)])
+    story.extend([PageBreak(), Paragraph("Per-class classification performance", styles["Heading1"])])
+    story.append(Paragraph(
+        "Precision is the proportion of predictions for a class that were correct; recall is the proportion of true "
+        "members of that class recovered; F1 balances precision and recall. Class identifiers below are shown exactly "
+        "as encoded in the source CSV (0–4); no semantic mapping to domain names is assumed.", styles["BodyText"]))
+    for item in results:
+        story.append(Paragraph(item["model"], styles["Heading2"]))
+        report = item["per_class"]
+        class_rows = [["Class", "Precision", "Recall", "F1-score", "Support"]]
+        for class_name in dataset["labels"]:
+            row = report[str(class_name)]
+            class_rows.append([
+                str(class_name), f"{row['precision']:.3f}", f"{row['recall']:.3f}",
+                f"{row['f1-score']:.3f}", str(int(row["support"])),
+            ])
+        for average_name, display_name in [("macro avg", "Macro avg."), ("weighted avg", "Weighted avg.")]:
+            row = report[average_name]
+            class_rows.append([
+                display_name, f"{row['precision']:.3f}", f"{row['recall']:.3f}",
+                f"{row['f1-score']:.3f}", str(int(row["support"])),
+            ])
+        class_table = Table(class_rows, repeatRows=1, hAlign="LEFT", colWidths=[4.0*cm, 2.5*cm, 2.5*cm, 2.5*cm, 2.0*cm])
+        class_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#dbeafe")),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("PADDING", (0, 0), (-1, -1), 5),
+        ]))
+        story.extend([class_table, Spacer(1, 0.25*cm)])
     story.extend([PageBreak(), Paragraph("Semantic similarity and visualization", styles["Heading1"])])
     for item in results:
         sem = item["semantic_similarity"]
@@ -92,7 +128,7 @@ def build() -> None:
             f"{item['model']}: {sem['evaluated_pairs']} of {sem['candidate_pairs']} curated word pairs "
             f"were available ({sem['coverage']:.1%} coverage). These cosine scores are illustrative only; "
             "the curated pairs are not a human-annotated benchmark.", styles["BodyText"]))
-        for pair in sem["pairs"][:8]:
+        for pair in sem["pairs"]:
             story.append(Paragraph(
                 f"{pair['word_1']} / {pair['word_2']}: {pair['cosine_similarity']:.3f}", styles["Small"]))
         coherence = item["topic_coherence"]
@@ -123,13 +159,34 @@ def build() -> None:
         PageBreak(),
         Paragraph("Interpretation and limitations", styles["Heading1"]),
         Paragraph(
-            "Compare held-out test accuracy together with macro F1, weighted F1, per-class metrics, and zero-vector "
-            "rate rather than selecting a model from one number alone. The corpus is domain-specific and may be too "
-            "small to represent all semantic relationships. Word2Vec and GloVe are trained locally with compact "
-            "settings; results should not be generalized to larger pretrained embedding releases. The curated word "
-            "pairs are a small diagnostic set, not a standard benchmark. PCA and t-SNE are sensitive to model settings "
-            "and visualization choices. No claim about a winning model should be made without considering these "
-            "limitations and the actual metrics shown above.", styles["BodyText"]),
+            f"On the fixed held-out test set, {max(results, key=lambda item: item['test_accuracy'])['model']} performed "
+            f"best by accuracy ({max(results, key=lambda item: item['test_accuracy'])['test_accuracy']:.2%}) and macro-F1 "
+            f"({max(results, key=lambda item: item['macro_f1'])['macro_f1']:.3f}). "
+            f"The accuracy difference between the two methods is "
+            f"{abs(results[0]['test_accuracy'] - results[1]['test_accuracy'])*100:.2f} percentage points. "
+            "The per-class table should be consulted to see whether performance is uniform across classes. "
+            "These metrics assess embeddings through mean document vectors and a class-balanced Logistic Regression "
+            "classifier; they do not isolate embedding quality from all downstream design choices.", styles["BodyText"]),
+        Spacer(1, 0.15*cm),
+        Paragraph(
+            "Semantic similarity: cosine similarities are reported for every curated pair found in both vocabularies. "
+            "The list is small, manually selected, and not human-rated, so it provides examples rather than a validated "
+            "semantic benchmark. Topic cohesion: the reported class-conditioned cosine score is an exploratory proxy, "
+            "not standard NPMI; training labels guide term selection, so it is not an independent unsupervised measure.",
+            styles["BodyText"]),
+        Spacer(1, 0.15*cm),
+        Paragraph(
+            "Visualization: PCA is a linear projection that summarizes directions of high variance, while t-SNE is "
+            "nonlinear and emphasizes local neighborhoods. Apparent clusters can differ because of these objectives; "
+            "axes and distances in t-SNE should not be interpreted as global semantic distances. Neither plot alone "
+            "proves semantic quality or topic coherence.", styles["BodyText"]),
+        Spacer(1, 0.15*cm),
+        Paragraph(
+            "Limitations: the corpus is domain-specific; embeddings are trained locally with compact settings; "
+            "document vectors are simple means; the curated pair list is limited; and results depend on the split "
+            "and classifier. Labels are numeric in the supplied CSV, so this report preserves IDs 0–4 rather than "
+            "guessing their mapping to politics, sport, tech, entertainment, and business. If the dataset documentation "
+            "provides that mapping, it can be added after verification.", styles["BodyText"]),
         Spacer(1, 0.3*cm),
         Paragraph("Reproducibility", styles["Heading1"]),
         Paragraph(
