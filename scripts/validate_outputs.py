@@ -10,7 +10,9 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 METRICS = ROOT / "report" / "generated" / "metrics.json"
-NOTEBOOK = ROOT / "assignment_2.ipynb"
+SOURCE_NOTEBOOK = ROOT / "assignment_2.ipynb"
+EXECUTED_NOTEBOOK = ROOT / "assignment_2_executed.ipynb"
+NOTEBOOK = EXECUTED_NOTEBOOK if EXECUTED_NOTEBOOK.exists() else SOURCE_NOTEBOOK
 PDF = ROOT / "report" / "report.pdf"
 FIGURES = ROOT / "report" / "generated" / "figures"
 
@@ -47,7 +49,8 @@ def main() -> None:
             check(result.get("semantic_similarity", {}).get("candidate_pairs", 0) > 0, f"{name}: semantic pair evaluation is documented")
         for name in ("word2vec_confusion.png", "glove_confusion.png", "word2vec_pca.png", "word2vec_tsne.png", "glove_pca.png", "glove_tsne.png"):
             check((FIGURES / name).exists(), f"figure exists: {name}")
-    check(NOTEBOOK.exists(), "assignment notebook exists")
+    check(SOURCE_NOTEBOOK.exists(), "source assignment notebook exists")
+    check(NOTEBOOK.exists(), "notebook selected for validation exists")
     if NOTEBOOK.exists():
         notebook = nbformat.read(NOTEBOOK, as_version=4)
         check(any("Word2Vec" in cell.source and "GloVe" in cell.source for cell in notebook.cells if cell.cell_type == "markdown"), "notebook explains both models")
