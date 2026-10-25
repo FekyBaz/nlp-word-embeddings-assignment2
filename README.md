@@ -1,6 +1,6 @@
 # NLP Assignment 2 — Word Embeddings Comparison
 
-Compare Word2Vec Skip-gram and GloVe embeddings on the Document Classification Dataset, with preprocessing, PCA/t-SNE visualization, semantic-similarity analysis, topic coherence, and downstream classification evaluation.
+Compare Word2Vec Skip-gram and GloVe embeddings on the Document Classification Dataset, including preprocessing, PCA/t-SNE visualization, semantic-similarity analysis, topic coherence, and downstream classification evaluation.
 
 ## Assignment deliverables
 
@@ -13,22 +13,29 @@ Official assignment sheet: [NLP_anu_assignment2.pdf](NLP_anu_assignment2.pdf)
 
 Required source: [Text Document Classification Dataset on Kaggle](https://www.kaggle.com/datasets/sunilthite/text-document-classification-dataset)
 
-The assignment describes five domains: politics, sport, tech, entertainment, and business. The data source is reported to contain 2,225 documents, but the actual downloaded files and their schema must be verified before analysis.
+The assignment specifies five domains: politics, sport, tech, entertainment, and business. Validate the actual downloaded files and schema before analysis; do not assume a row count or column names.
 
-### Download locally
+### Dataset archive currently uploaded
 
-1. Install the Kaggle CLI:
-   ```powershell
-   py -m pip install kaggle
-   ```
-2. Authenticate with Kaggle using the official process at https://www.kaggle.com/settings/api. Keep credentials outside this repository. **Never commit `kaggle.json`, API tokens, or passwords.**
-3. From the repository root, download and extract the dataset:
-   ```powershell
-   kaggle datasets download -d sunilthite/text-document-classification-dataset -p data/raw --unzip
-   ```
-4. Inspect the extracted files and confirm the text and label columns, row count, class labels, duplicates, missing values, and license/terms before using them.
+The uploaded `archive.zip` is in the repository root. Extract it locally into `data/raw/` after reviewing its contents and the dataset's applicable terms. Do not commit extracted third-party files until file sizes, schema, and license/terms have been checked.
 
-The raw dataset is intentionally not committed yet. This avoids committing a dataset archive or republishing third-party data before verifying the files, size, and applicable terms. Once verified, decide whether to commit a permitted, reasonably sized data file or keep it locally and document the download procedure.
+On Windows PowerShell, from the repository root:
+
+```powershell
+New-Item -ItemType Directory -Force data/raw | Out-Null
+Expand-Archive -LiteralPath .\archive.zip -DestinationPath .\data\raw -Force
+py scripts/inspect_dataset.py data/raw
+```
+
+If downloading again from Kaggle, install and authenticate the Kaggle CLI using https://www.kaggle.com/settings/api, then run:
+
+```powershell
+py -m pip install kaggle
+kaggle datasets download -d sunilthite/text-document-classification-dataset -p data/raw --unzip
+py scripts/inspect_dataset.py data/raw
+```
+
+**Never commit Kaggle credentials, API tokens, or passwords.** The repository ignores raw data and credentials by default. Do not remove those safeguards without verifying dataset size and permission to redistribute.
 
 ## Development setup
 
@@ -40,17 +47,17 @@ py -m venv .venv
 python -m pip install --upgrade pip
 ```
 
-A pinned `requirements.txt`, notebook, validation scripts, and report will be added after inspecting the real data schema and confirming the approach for GloVe.
+Dependencies, notebook, validation scripts, and report will be finalized after the actual dataset schema and the GloVe training/loading approach have been verified.
 
 ## Reproducibility and evaluation principles
 
-- Use a fixed seed and record versions/configuration.
-- Fit any data-dependent preprocessing, vocabulary, and downstream classifier only on the training split when evaluating generalization.
-- Use the same split and comparable evaluation protocol for embeddings; report class-wise metrics and a confusion matrix, not only accuracy.
-- Document how GloVe vectors are obtained or trained; do not claim that it was trained locally if pretrained vectors are used.
-- Treat PCA and t-SNE plots as exploratory visualizations, not proof of semantic quality.
-- Record unavailable/OOV words and explain limitations of the similarity and topic-coherence evaluation.
+- Use a fixed random seed and record library versions and model configurations.
+- Fit data-dependent preprocessing, vocabulary, and the downstream classifier only on the training split when evaluating generalization.
+- Use the same split and a comparable evaluation protocol for both embeddings; report per-class metrics and a confusion matrix, not only accuracy.
+- Document whether GloVe vectors are trained locally or loaded from a pretrained source.
+- Treat PCA and t-SNE as exploratory visualizations, not proof of semantic quality.
+- Report out-of-vocabulary coverage and explain limitations of the semantic-similarity and topic-coherence evaluation.
 
-## Repository status
+## Current status
 
-Initial setup. Dataset files have not yet been validated or committed. Do not report results until they have been computed from the actual data and executed code.
+Repository scaffolding and dataset-inspection utility are committed. Dataset contents have not yet been independently inspected in this environment; do not report model results until the data has been validated and the notebook executed.
