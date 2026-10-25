@@ -159,11 +159,7 @@ def train_glove(
     vectors = w + c
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     vectors = vectors / np.maximum(norms, 1e-12)
-    return {word: vectors[i].astype(np.float32) for i, word in enumerate(vocab)}, cooc_to_words(cooc, vocab)
-
-
-def cooc_to_words(cooc: dict[tuple[int, int], float], vocab: list[str]) -> dict[tuple[str, str], float]:
-    return {(vocab[i], vocab[j]): value for (i, j), value in cooc.items()}
+    return {word: vectors[i].astype(np.float32) for i, word in enumerate(vocab)}
 
 
 def model_vectors(model: Word2Vec) -> dict[str, np.ndarray]:
@@ -328,7 +324,7 @@ def main() -> None:
         sg=1, workers=1, seed=SEED, epochs=30, negative=5, sample=1e-3
     )
     w2v_vectors = model_vectors(w2v)
-    glove_vectors, _ = train_glove(train_docs, epochs=args.glove_epochs)
+    glove_vectors = train_glove(train_docs, epochs=args.glove_epochs)
     results = []
     predictions = {}
     for name, vectors in (("Word2Vec Skip-gram", w2v_vectors), ("GloVe (locally trained)", glove_vectors)):
