@@ -216,6 +216,47 @@ def curated_similarity_pairs() -> list[tuple[str, str]]:
     ]
 
 
+def topic_coherence(vectors: dict[str, np.ndarray], train_docs: list[list[str]], y_train: np.ndarray, labels: list[str], top_n: int = 10) -> dict:
+    """Measure class-conditioned cohesion of frequent discriminative training terms.
+
+    This is an exploratory embedding-space cohesion score, not a standard intrinsic
+    topic-coherence benchmark such as NPMI. Terms are selected using training data only.
+    """
+    class_counts: dict[str, Counter] = {label: Counter() for label in labels}
+    global_counts = Counter()
+    for tokens, label_id in zip(train_docs, y_train):
+        label = labels[int(label_id)]
+        class_counts[label].update(token for token in tokens if token in vectors)
+        global_counts.update(token for token in tokens if token in vectors)
+    output = {}
+    all_scores = []
+    for label in labels:
+        # Prefer terms frequent in this class and more associated with it than globally.
+        candidates = []
+        for word, count in class_counts[label].items():
+            if count < 2:
+                continue
+            total = global_counts[word]
+            association = count / max(total, 1)
+            candidates.append((association, count, word))
+        candidates.sort(reverse=True)
+        terms = [word for _, _, word in candidates[:top_n]]
+        sims = []
+        for i, left in enumerate(terms):
+            for right in terms[i + 1:]:
+                sims.append(float(np.dot(vectors[left], vectors[right]) / (np.linalg.norm(vectors[left]) * np.linalg.norm(vectors[right]) + 1e-12)))
+        score = float(np.mean(sims)) if sims else None
+        if score is not None:
+            all_scores.append(score)
+        output[label] = {"terms": terms, "pair_count": len(sims), "mean_pairwise_cosine": score}
+    return {
+        "method": "mean pairwise cosine similarity among top class-associated training terms",
+        "is_standard_benchmark": False,
+        "overall_mean_pairwise_cosine": float(np.mean(all_scores)) if all_scores else None,
+        "by_class": output,
+    }
+
+
 def semantic_similarity(vectors: dict[str, np.ndarray]) -> dict:
     rows = []
     for left, right in curated_similarity_pairs():
@@ -330,6 +371,7 @@ def main() -> None:
     for name, vectors in (("Word2Vec Skip-gram", w2v_vectors), ("GloVe (locally trained)", glove_vectors)):
         metrics, pred = evaluate_embeddings(name, vectors, train_docs, test_docs, y_train, y_test, labels)
         metrics["semantic_similarity"] = semantic_similarity(vectors)
+        metrics["topic_coherence"] = topic_coherence(vectors, train_docs, y_train, labels)
         results.append(metrics)
         predictions[name] = pred.tolist()
         safe_name = "word2vec" if name.startswith("Word2Vec") else "glove"
